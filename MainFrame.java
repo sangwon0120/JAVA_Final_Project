@@ -2,51 +2,56 @@ package FinalProject;
 
 
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
 class ButtonCellEditor extends DefaultCellEditor {
     private JButton button;
     private String label;
-    private boolean isPushed;
     private ChartPanelCustom chart;
 
     public ButtonCellEditor(ChartPanelCustom chart) {
         super(new JCheckBox());
-        this.chart = chart; // ChartPanelCustom 객체 저장
+        this.chart = chart;
+
+        // 버튼 생성 및 기본 동작 설정
         button = new JButton();
         button.setOpaque(true);
-
-        // 버튼 클릭 이벤트 처리
-        button.addActionListener(e -> {
-            System.out.println("Button clicked: " + label); // 디버그용 출력
-            if (label != null) {
-                chart.updateChart(label); // 차트 갱신
-                System.out.println(label + " 차트가 업데이트됩니다."); // 디버그용 출력
-            }
-            fireEditingStopped();
-        });
     }
 
     @Override
     public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
         if (value instanceof JButton) {
             button = (JButton) value;
-            label = button.getText(); // 버튼 텍스트를 label에 저장
-            System.out.println("Editing cell: " + label); // 디버깅 출력
+            label = button.getText();
+            System.out.println("Editing cell: " + label); // 디버깅용 출력
         }
-        isPushed = true;
+
+        // ActionListener 강제 호출
+        button.addActionListener(e -> {
+            System.out.println("Button clicked: " + label); // 디버깅용 출력
+            if (label != null) {
+                chart.updateChart(label.trim());
+                System.out.println(label.trim() + " 차트가 업데이트되었습니다.");
+            }
+        });
+
         return button;
     }
 
     @Override
     public Object getCellEditorValue() {
-        isPushed = false;
         return button;
     }
 }
+
+
+
+
 
 
 class ButtonCellRenderer extends JButton implements TableCellRenderer {
@@ -73,11 +78,16 @@ class ButtonCellRenderer extends JButton implements TableCellRenderer {
     }
 }
 
+
+//------------------------------------------------------------
+//메인프레임
+//-----------------------------------------------------------
 public class MainFrame extends JFrame{
 	JPanel TopPanel,LeftPanel,Portpolio,BottomPanel;
 	JLabel sejong,name;
 	JButton Buy,Sell;
 	ChartPanelCustom chart;
+	DefaultTableModel ppModel;
 	public MainFrame()
 	{
 		setSize(1000,800);
@@ -126,8 +136,10 @@ public class MainFrame extends JFrame{
 
 		table.setFillsViewportHeight(true);
 		table.setRowHeight(30);
+		table.getColumn("종목명").setCellEditor(new ButtonCellEditor(chart)); // ChartPanelCustom 전달
 		table.getColumn("종목명").setCellRenderer(new ButtonCellRenderer());
-		table.getColumn("종목명").setCellEditor(new ButtonCellEditor(chart)); // chart 전달
+		
+
 
 
 		
@@ -142,11 +154,9 @@ public class MainFrame extends JFrame{
         Portpolio.setPreferredSize(new Dimension(250,0));
         
         String[] PortpolioData = {"종목명","평단가","보유수","수익률"};
-        Object[][] ppfactor = {
-        		{"1","2","3","4"},{"","","","",""},{"","","","",""}
-        		,{"","","","",""},{"","","","",""},{"","","","",""}
-        };
-        JTable pptable = new JTable(ppfactor,PortpolioData);
+        ppModel = new DefaultTableModel(PortpolioData,0);
+        JTable pptable = new JTable(ppModel);
+        
         pptable.setRowHeight(30);
         pptable.setBackground(new Color(81,98,111));
         pptable.setForeground(Color.white);
@@ -162,11 +172,15 @@ public class MainFrame extends JFrame{
         //아래 패널
         //--------------------------------
         BottomPanel = new JPanel();
-        BottomPanel.setBackground(new Color(213,214,210));
+        BottomPanel.setBackground(new Color(255,234,155));
         BottomPanel.setPreferredSize(new Dimension(0,200));
         chart.add(BottomPanel,BorderLayout.SOUTH);
+        
+        MyListener BuySell = new MyListener(table,ppModel);
         Buy = new JButton("매수");
         Sell = new JButton("매도");
+        Buy.addActionListener(BuySell);
+        Sell.addActionListener(BuySell);
         
         BottomPanel.add(Buy);
         BottomPanel.add(Sell);
@@ -197,13 +211,115 @@ public class MainFrame extends JFrame{
 		setVisible(true);
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 	}
+	class MyListener implements ActionListener {
+	    JTable stockTable;
+	    DefaultTableModel ppModel;
+
+	    public MyListener(JTable stockTable, DefaultTableModel ppModel) {
+	        this.stockTable = stockTable;
+	        this.ppModel = ppModel;
+	    }
+
+	    public String getSelectedStock(JTable stockTable) {
+	        int selectedRow = stockTable.getSelectedRow();
+	        if (selectedRow != -1) {
+	            Object value = stockTable.getValueAt(selectedRow, 0);
+	            if (value instanceof JButton) {
+	                return ((JButton) value).getText(); // 버튼의 텍스트 반환
+	            } else {
+	                return value.toString();
+	            }
+	        }
+	        return null; // 선택되지 않음
+	    }
+
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+	        String selectedStock = getSelectedStock(stockTable);
+
+	        if (selectedStock != null) {
+	            String input = JOptionPane.showInputDialog(null, 
+	                (e.getSource() == Buy ? "얼마나 매수할까요?:" : "얼마나 매도할까요?:"), 
+	                (e.getSource() == Buy ? "매수" : "매도"), 
+	                JOptionPane.PLAIN_MESSAGE);
+
+	            if (input != null) { // 사용자가 입력을 취소하지 않았을 때
+	                try {
+	                    int quantity = Integer.parseInt(input.trim());
+	                    if (quantity <= 0) {
+	                        JOptionPane.showMessageDialog(null, "유효한 수량을 입력하세요.", "오류", JOptionPane.ERROR_MESSAGE);
+	                        return;
+	                    }
+
+	                    if (e.getSource() == Buy) { // Buy 버튼 동작
+	                        boolean stockExists = false;
+
+	                        for (int i = 0; i < ppModel.getRowCount(); i++) {
+	                            if (ppModel.getValueAt(i, 0).equals(selectedStock)) {
+	                                int currentCount = Integer.parseInt(ppModel.getValueAt(i, 2).toString());
+	                                ppModel.setValueAt(currentCount + quantity, i, 2); // 수량 증가
+	                                stockExists = true;
+	                                break;
+	                            }
+	                        }
+
+	                        if (!stockExists) {
+	                            ppModel.addRow(new Object[]{selectedStock, "100", String.valueOf(quantity), "0%"}); // 새로운 종목 추가
+	                        }
+	                    } else if (e.getSource() == Sell) { // Sell 버튼 동작
+	                        boolean stockFound = false;
+
+	                        for (int i = 0; i < ppModel.getRowCount(); i++) {
+	                            if (ppModel.getValueAt(i, 0).equals(selectedStock)) {
+	                                int currentCount = Integer.parseInt(ppModel.getValueAt(i, 2).toString());
+	                                if (currentCount > quantity) {
+	                                    ppModel.setValueAt(currentCount - quantity, i, 2); // 수량 감소
+	                                } else if (currentCount == quantity) {
+	                                    ppModel.removeRow(i); // 수량 0이면 삭제
+	                                } else {
+	                                    JOptionPane.showMessageDialog(null, "보유 수량이 매도하려는 수량보다 많습니다", "오류", JOptionPane.ERROR_MESSAGE);
+	                                    return;
+	                                }
+	                                stockFound = true;
+	                                break;
+	                            }
+	                        }
+
+	                        if (!stockFound) {
+	                            JOptionPane.showMessageDialog(null, "포트폴리오에 해당 종목이 없습니다!", "오류", JOptionPane.ERROR_MESSAGE);
+	                        }
+	                    }
+	                } catch (NumberFormatException ex) {
+	                    JOptionPane.showMessageDialog(null, "숫자를 입력하세요!", "오류", JOptionPane.ERROR_MESSAGE);
+	                }
+	            }
+	        } else {
+	            JOptionPane.showMessageDialog(null, "종목을 선택하세요!", "알림", JOptionPane.WARNING_MESSAGE);
+	        }
+	    }
+	}
+
+
+
+	//LeftPanel의 테이블에서 선택된 행의 종목정보를 가져오는 메소드
+	public String getSelectedStock(JTable stockTable) {
+	    int selectedRow = stockTable.getSelectedRow();
+	    if (selectedRow != -1) {
+	        return stockTable.getValueAt(selectedRow, 0).toString(); // 종목명 반환
+	    }
+	    return null; // 선택되지 않음
+	}
+
 	//버튼 생성 메소드
-	 public static JButton createButton(String label) 
-	 {
-	        JButton button = new JButton(label);
-	        button.setBackground(new Color(213,214,210));
-	        return button;
-	 }
+	public static JButton createButton(String label) {
+	    JButton button = new JButton(label);
+	    button.setBackground(new Color(213, 214, 210));
+	    button.addActionListener(e -> {
+	        System.out.println("Button created and clicked: " + label); // 디버깅 출력
+	    });
+	    return button;
+	}
+	
 	// 버튼 클릭 리스너
 	 private ActionListener createStockButtonListener(String stockName) 
 	 {

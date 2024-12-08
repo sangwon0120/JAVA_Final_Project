@@ -8,36 +8,35 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import javax.swing.*;
 import java.awt.*;
 
-public class ChartPanelCustom extends JPanel {
+public class ChartPanelCustom extends JPanel 
+{
     private ChartPanel chartPanel; // JFreeChart의 ChartPanel 포함
 
-    public ChartPanelCustom(String stockName) {
+    public ChartPanelCustom(String stockName) 
+    {
         setLayout(new BorderLayout());
         chartPanel = createChartPanel(stockName); // 초기 차트 생성
         add(chartPanel, BorderLayout.CENTER);
     }
 
     // 차트 갱신 메서드
-    public void updateChart(String stockName) {
-        // 이전 차트 제거
-    	System.out.println("Updating chart for: " + stockName);
-        remove(chartPanel);
-
-        // 새로운 차트 생성 및 추가
-        chartPanel = createChartPanel(stockName);
+    public void updateChart(String stockName) 
+    {
+        remove(chartPanel); // 기존 차트 제거
+        chartPanel = createChartPanel(stockName.trim());
         add(chartPanel, BorderLayout.CENTER);
 
-        // 레이아웃 및 화면 갱신
-        revalidate();
-        repaint();
+        revalidate(); // 레이아웃 갱신
+        repaint(); // 화면 갱신
+        System.out.println("Chart updated for: " + stockName.trim()); // 갱신 확인
     }
 
     private DefaultCategoryDataset createDataset(String stockName) 
     {
-    	System.out.println("Creating dataset for: " + stockName);
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
-        switch (stockName.trim()) {
+        switch (stockName.trim()) 
+        {
             case "AAPL":
                 dataset.addValue(150, "가격", "2023-01");
                 dataset.addValue(160, "가격", "2023-02");
@@ -73,7 +72,8 @@ public class ChartPanelCustom extends JPanel {
 
 
     // 차트 생성 메서드
-    private ChartPanel createChartPanel(String stockName) {
+    private ChartPanel createChartPanel(String stockName) 
+    {
         DefaultCategoryDataset dataset = createDataset(stockName);
 
         // JFreeChart 생성
@@ -83,6 +83,20 @@ public class ChartPanelCustom extends JPanel {
                 "가격", // Y축 라벨
                 dataset // 데이터셋
         );
+     // 폰트 설정
+        Font titleFont = new Font("맑은 고딕", Font.BOLD, 18); // 제목 폰트
+        Font axisFont = new Font("맑은 고딕", Font.PLAIN, 14); // 축 제목 폰트
+        Font tickFont = new Font("맑은 고딕", Font.PLAIN, 12); // 축 값 폰트
+
+        // 차트 제목에 폰트 적용
+        chart.getTitle().setFont(titleFont);
+
+        // X축, Y축에 폰트 적용
+        chart.getCategoryPlot().getDomainAxis().setLabelFont(axisFont); // X축 제목
+        chart.getCategoryPlot().getDomainAxis().setTickLabelFont(tickFont); // X축 값
+        chart.getCategoryPlot().getRangeAxis().setLabelFont(axisFont); // Y축 제목
+        chart.getCategoryPlot().getRangeAxis().setTickLabelFont(tickFont); // Y축 값
+        
 
         return new ChartPanel(chart); // ChartPanel 반환
     }
